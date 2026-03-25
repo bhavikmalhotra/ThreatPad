@@ -1,0 +1,27 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm --version)",
+      "Bash(pnpm install:*)",
+      "Bash(cd:*)",
+      "Bash(pnpm add:*)",
+      "Bash(pnpm --filter @threatpad/web build)",
+      "Bash(pnpm:*)",
+      "Bash(docker compose:*)",
+      "Bash(curl:*)",
+      "Bash(printf '{\"\"\"\"email\"\"\"\":\"\"\"\"test@example.com\"\"\"\",\"\"\"\"password\"\"\"\":\"\"\"\"Password123!\"\"\"\",\"\"\"\"displayName\"\"\"\":\"\"\"\"Test User\"\"\"\"}')",
+      "Bash(npx shadcn@latest add select --yes)",
+      "Bash(grep:*)",
+      "Bash(lsof -ti:3000,3002)",
+      "Bash(xargs kill:*)",
+      "Bash(lsof -ti:3002)",
+      "Bash(python3 -m json.tool)",
+      "Bash(pkill -f 'turbo dev')",
+      "Bash(pkill -f 'tsx watch')",
+      "Bash(pkill -f 'next dev')",
+      "Bash(cat:*)",
+      "Bash(head:*)",
+      "Bash(npx tsc:*)"
+    ]
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "name": "@threatpad/server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch --env-file=../../.env src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "lint": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@threatpad/shared": "workspace:*",
+    "@threatpad/db": "workspace:*",
+    "fastify": "^5.2.0",
+    "fastify-plugin": "^5.0.0",
+    "@fastify/cors": "^11.0.0",
+    "@fastify/cookie": "^11.0.0",
+    "@fastify/rate-limit": "^10.2.0",
+    "@fastify/websocket": "^11.0.0",
+    "bcrypt": "^5.1.1",
+    "jose": "^6.0.0",
+    "zod": "^3.24.0",
+    "pino": "^9.6.0",
+    "pino-pretty": "^13.0.0",
+    "ioredis": "^5.4.0",
+    "drizzle-orm": "^0.44.0",
+    "postgres": "^3.4.5",
+    "yjs": "^13.6.30",
+    "y-protocols": "^1.0.6",
+    "lib0": "^0.2.99"
+  },
+  "devDependencies": {
+    "@types/bcrypt": "^5.0.2",
+    "@types/node": "^22.10.0",
+    "@types/ws": "^8.5.0",
+    "typescript": "^5.7.3",
+    "tsx": "^4.19.0"
+  }
+}
