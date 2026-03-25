@@ -1,23 +1,28 @@
-# Fix /setup redirect on fresh install
+# Fix server Docker crash — ESM directory imports
 
 ## Problem
-When a fresh prod Docker instance starts, visiting `/` does not redirect to `/setup`.
-Root cause: `page.tsx` always redirected to `/login`, and the login page silently swallowed
-config API failures (defaulting to `setupRequired: false`).
+Server container crash-loops with `ERR_UNSUPPORTED_DIR_IMPORT`. `packages/db` and `packages/shared`
+ship raw `.ts` files to prod (not compiled). Node 22 ESM can load `.ts` natively but requires
+explicit file extensions — extensionless/directory imports like `./schema` or `./users` fail.
+These work in dev because `tsx` handles resolution, but prod uses raw `node`.
 
 ## Tasks
-- [x] Fix root page: check config server-side and redirect to `/setup` or `/login` accordingly
-- [x] Fix login page: retry config fetch on failure instead of silently defaulting
-- [x] Fix login page: show error state if config is unreachable after retries
-- [x] Type-check passes
+- [x] Fix Dockerfile CMD to use `tsx` loader: `node --import tsx apps/server/dist/index.js`
+- [x] Move `tsx` from devDependencies to dependencies in server package.json (so it's available in prod)
+- [x] Type-check passes (no source code changes needed)
 
 ## Review
 
-### Changes Made
+### Changes Made (2 files, 2 lines)
 
-1. **`apps/web/src/app/page.tsx`** — Made it an async server component. Fetches `/api/auth/config` server-side with `cache: 'no-store'`. If `setupRequired: true`, redirects to `/setup`. Falls through to `/login` on failure or when setup is done.
+1. **`apps/server/Dockerfile`** — Changed CMD from `node apps/server/dist/index.js` to
+   `node --import tsx apps/server/dist/index.js`. The `--import tsx` flag registers tsx as an
+   ESM loader, which transparently handles `.ts` files, extensionless imports, and directory imports.
 
-2. **`apps/web/src/app/(auth)/login/page.tsx`** — Two fixes:
-   - Config fetch now retries up to 3 times with 2-second delays (handles server still starting).
-   - After 3 failures, shows a warning message instead of silently hiding the problem.
-   - Added `allowedEmailDomains` to the `AuthConfig` interface.
+2. **`apps/server/package.json`** — Moved `tsx` from `devDependencies` to `dependencies` so it's
+   installed in the production Docker image.
+
+### Why this approach
+Tried adding `.ts` extensions to all imports first, but `allowImportingTsExtensions` conflicts
+with the server's `noEmit: false` (it needs to compile to JS). The tsx loader approach is 2 lines,
+zero source code changes, and handles the root cause: raw `.ts` packages running in Node ESM.

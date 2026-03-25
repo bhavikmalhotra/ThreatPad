@@ -28,13 +28,13 @@
     "postgres": "^3.4.5",
     "yjs": "^13.6.30",
     "y-protocols": "^1.0.6",
-    "lib0": "^0.2.99"
+    "lib0": "^0.2.99",
+    "tsx": "^4.19.0"
   },
   "devDependencies": {
     "@types/bcrypt": "^5.0.2",
     "@types/node": "^22.10.0",
     "@types/ws": "^8.5.0",
-    "typescript": "^5.7.3",
-    "tsx": "^4.19.0"
+    "typescript": "^5.7.3"
   }
 }

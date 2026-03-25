@@ -53,4 +53,4 @@ COPY packages/db/drizzle.config.ts ./packages/db/
 
 EXPOSE 3002
 
-CMD ["node", "apps/server/dist/index.js"]
+CMD ["node", "--import", "tsx", "apps/server/dist/index.js"]
