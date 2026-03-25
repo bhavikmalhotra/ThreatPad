@@ -1,41 +1,23 @@
-# Domain Filtering via Env Variable
+# Fix /setup redirect on fresh install
 
-## Plan
-Add `ALLOWED_EMAIL_DOMAINS` env var that restricts registration and OAuth login to specific email domains.
+## Problem
+When a fresh prod Docker instance starts, visiting `/` does not redirect to `/setup`.
+Root cause: `page.tsx` always redirected to `/login`, and the login page silently swallowed
+config API failures (defaulting to `setupRequired: false`).
 
 ## Tasks
-- [x] Add `ALLOWED_EMAIL_DOMAINS` to env schema in `apps/server/src/config/env.ts`
-- [x] Add domain validation helper + enforce in `/register`
-- [x] Enforce domain check in Google OAuth callback
-- [x] Enforce domain check in GitHub OAuth callback
-- [x] Expose allowed domains in `/api/auth/config` for frontend awareness
-- [x] Add to `.env.example` and `docker-compose.prod.yml`
-- [x] Add `oauth_domain_not_allowed` error message to login page
+- [x] Fix root page: check config server-side and redirect to `/setup` or `/login` accordingly
+- [x] Fix login page: retry config fetch on failure instead of silently defaulting
+- [x] Fix login page: show error state if config is unreachable after retries
 - [x] Type-check passes
-
-## Notes
-- `/setup` (first admin) is NOT restricted — otherwise you can't bootstrap
-- Empty value = allow all domains (no restriction)
-- Comma-separated for multiple domains: `partner.org`
-- Domain check is case-insensitive
 
 ## Review
 
-All tasks completed. Server type-checks clean.
-
 ### Changes Made
 
-1. **`apps/server/src/config/env.ts`** — Added `ALLOWED_EMAIL_DOMAINS` string env var (default empty = no restriction).
+1. **`apps/web/src/app/page.tsx`** — Made it an async server component. Fetches `/api/auth/config` server-side with `cache: 'no-store'`. If `setupRequired: true`, redirects to `/setup`. Falls through to `/login` on failure or when setup is done.
 
-2. **`apps/server/src/routes/auth.ts`** — 4 changes:
-   - Added `isEmailDomainAllowed(email)` helper — parses comma-separated domains, case-insensitive match, returns true if env var is empty.
-   - `/register` — rejects signup with 403 if domain not in allow list.
-   - Google OAuth callback — redirects to `/login?error=oauth_domain_not_allowed` if domain blocked.
-   - GitHub OAuth callback — same redirect.
-   - `/api/auth/config` — now returns `allowedEmailDomains: string[]` so frontend can inform users.
-
-3. **`apps/web/src/app/(auth)/login/page.tsx`** — Added `oauth_domain_not_allowed` error message: "Your email domain is not allowed. Contact your administrator."
-
-4. **`.env.example`** — Documented `ALLOWED_EMAIL_DOMAINS` with usage example.
-
-5. **`docker-compose.prod.yml`** — Passes `ALLOWED_EMAIL_DOMAINS` env var to server container.
+2. **`apps/web/src/app/(auth)/login/page.tsx`** — Two fixes:
+   - Config fetch now retries up to 3 times with 2-second delays (handles server still starting).
+   - After 3 failures, shows a warning message instead of silently hiding the problem.
+   - Added `allowedEmailDomains` to the `AuthConfig` interface.

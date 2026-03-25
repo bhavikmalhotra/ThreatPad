@@ -18,6 +18,7 @@ interface AuthConfig {
   selfHosted: boolean;
   registrationDisabled: boolean;
   setupRequired: boolean;
+  allowedEmailDomains?: string[];
 }
 
 export default function LoginPage() {
@@ -41,18 +42,35 @@ function LoginContent() {
   const registered = searchParams.get('registered');
 
   useEffect(() => {
-    api.get<AuthConfig>('/api/auth/config')
-      .then((data) => {
-        if (data.setupRequired) {
-          router.replace('/setup');
-          return;
-        }
-        setConfig(data);
-      })
-      .catch(() => {
-        // If config endpoint fails, show normal login
-        setConfig({ selfHosted: false, registrationDisabled: false, setupRequired: false });
-      });
+    let cancelled = false;
+    let attempt = 0;
+
+    const fetchConfig = () => {
+      api.get<AuthConfig>('/api/auth/config')
+        .then((data) => {
+          if (cancelled) return;
+          if (data.setupRequired) {
+            router.replace('/setup');
+            return;
+          }
+          setConfig(data);
+        })
+        .catch(() => {
+          if (cancelled) return;
+          attempt++;
+          if (attempt < 3) {
+            // Retry after 2 seconds — server may still be starting
+            setTimeout(fetchConfig, 2000);
+          } else {
+            // After 3 attempts, show login with a warning
+            setConfig({ selfHosted: false, registrationDisabled: false, setupRequired: false });
+            setError('Could not reach the server. Some features may be unavailable.');
+          }
+        });
+    };
+
+    fetchConfig();
+    return () => { cancelled = true; };
   }, [router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
