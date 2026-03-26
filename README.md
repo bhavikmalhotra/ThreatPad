@@ -24,7 +24,7 @@ Requires [Docker](https://docker.com/). That's it.
 ```bash
 git clone https://github.com/bhavikmalhotra/ThreatPad.git
 cd ThreatPad
-docker compose -f docker-compose.prod.yml up -d
+docker compose -f docker-compose.prod.yml up -d --build
 ```
 
 Open **http://localhost:3000** — you'll be guided through creating your admin account.
