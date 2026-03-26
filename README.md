@@ -4,6 +4,8 @@ A collaborative, real-time note-taking platform built for Cyber Threat Intellige
 
 ThreatPad combines the speed of modern productivity tools with CTI-specific capabilities: IOC auto-extraction, STIX 2.1 export, structured threat templates, and fine-grained access control.
 
+![WhatsApp Image 2026-03-26 at 8 39 17 PM (2)](https://github.com/user-attachments/assets/2470dcb1-6aea-425c-9fbe-75e809c3c62b)
+
 ## Features
 
 - **Rich Editor** — WYSIWYG with syntax highlighting, tables, task lists, Edit/Preview toggle
@@ -16,6 +18,8 @@ ThreatPad combines the speed of modern productivity tools with CTI-specific capa
 - **Full-Text Search** — Postgres-backed substring + stemmed search
 - **Audit Logging** — Track all user actions across workspaces
 - **Self-Hosted** — Your data stays on your network
+  
+![WhatsApp Image 2026-03-26 at 8 39 17 PM (1)](https://github.com/user-attachments/assets/c03dc6f4-c535-4584-aca9-49567c6a2721)
 
 ## Quick Install
 
