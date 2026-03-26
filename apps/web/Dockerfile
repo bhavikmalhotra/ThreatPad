@@ -1,5 +1,5 @@
-# ── Stage 1: Install dependencies ──
-FROM node:22-alpine AS deps
+# ── Stage 1: Build ──
+FROM node:22-alpine AS builder
 RUN corepack enable && corepack prepare pnpm@9.15.4 --activate
 WORKDIR /app
 
@@ -9,16 +9,6 @@ COPY apps/web/package.json apps/web/
 
 RUN pnpm install --frozen-lockfile
 
-# ── Stage 2: Build ──
-FROM node:22-alpine AS builder
-RUN corepack enable && corepack prepare pnpm@9.15.4 --activate
-WORKDIR /app
-
-COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/packages/shared/node_modules ./packages/shared/node_modules
-COPY --from=deps /app/apps/web/node_modules ./apps/web/node_modules
-
-COPY pnpm-lock.yaml pnpm-workspace.yaml package.json tsconfig.base.json ./
 COPY packages/shared packages/shared
 COPY apps/web apps/web
 
@@ -31,7 +21,7 @@ ENV NEXT_PUBLIC_WS_URL=$NEXT_PUBLIC_WS_URL
 
 RUN pnpm --filter @threatpad/web build && mkdir -p /app/apps/web/public
 
-# ── Stage 3: Production ──
+# ── Stage 2: Production ──
 FROM node:22-alpine AS runner
 WORKDIR /app
 

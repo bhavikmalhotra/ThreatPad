@@ -21,7 +21,18 @@
       "Bash(pkill -f 'next dev')",
       "Bash(cat:*)",
       "Bash(head:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(docker build:*)",
+      "Bash(docker run:*)",
+      "Bash(docker ps:*)",
+      "Bash(docker info:*)",
+      "Bash(taskkill //F //IM \"Docker Desktop.exe\")",
+      "Bash(cmd.exe /c \"start \"\"\"\" \"\"C:\\\\Program Files\\\\Docker\\\\Docker\\\\Docker Desktop.exe\"\"\")",
+      "Bash(docker version:*)",
+      "Bash(docker system:*)",
+      "Bash(docker builder:*)",
+      "Bash(taskkill //F //IM \"com.docker.backend.exe\")",
+      "Bash(wsl.exe --shutdown)"
     ]
   }
 }
