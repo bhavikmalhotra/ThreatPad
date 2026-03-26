@@ -8,8 +8,7 @@ ThreatPad combines the speed of modern productivity tools with CTI-specific capa
 
 - **Rich Markdown Editor** — Tiptap-based WYSIWYG editor with Edit/Preview toggle, syntax-highlighted code blocks, tables, task lists
 - **IOC Auto-Extraction** — Automatically detects IPs, domains, URLs, hashes, emails, and CVEs from note content
-- **STIX 2.1 Export** — Export extracted IOCs as a STIX bundle with Indicator and Report objects
-- **Export Formats** — Markdown, JSON, CSV, STIX 2.1
+- **Plugin-Based Exports** — JSON, CSV, STIX 2.1 built-in. Add new formats with a single file (see [Writing Plugins](#writing-plugins))
 - **CTI Templates** — Built-in templates for IOC Dump, Threat Actor Profile, Incident Notes, Campaign Tracker
 - **Workspace & Folder Organization** — Nested folders (up to 5 levels), multiple workspaces, tag-based filtering
 - **Access Control** — Workspace-level RBAC (owner/editor/viewer), per-note sharing, private notes
@@ -144,6 +143,48 @@ When deploying for your team, set `SELF_HOSTED=true` in your `.env`. On first vi
 
 Backups are gzipped SQL dumps. The script auto-detects Docker containers or uses `DATABASE_URL` directly. Old backups beyond 30 are auto-cleaned.
 
+## Writing Plugins
+
+ThreatPad uses a simple registry-based plugin system. Export is the first plugin type — more are planned (enrichment, import, IOC patterns).
+
+### Export Plugin
+
+Create a file in `apps/server/src/plugins/exporters/`:
+
+```typescript
+// apps/server/src/plugins/exporters/my-exporter.ts
+import type { ExportPlugin } from '@threatpad/shared/types';
+
+export const myExporter: ExportPlugin = {
+  key: 'myformat',
+  label: 'My Format',
+  fileExtension: '.xml',
+  contentType: 'application/xml',
+  async export({ noteId, iocs, note }) {
+    const xml = buildXml(iocs); // your logic here
+    return { data: xml, contentType: 'application/xml', filename: `iocs-${noteId}.xml` };
+  },
+};
+```
+
+Then register it in `apps/server/src/plugins/exporters/index.ts`:
+
+```typescript
+import { myExporter } from './my-exporter.js';
+exportRegistry.register(myExporter);
+```
+
+That's it. The frontend automatically picks up new formats from `GET /api/export-formats` — no UI changes needed.
+
+### Planned Plugin Types
+
+| Plugin Type | Use Case | Status |
+|-------------|----------|--------|
+| **Export** | IOC export formats (STIX, CSV, MISP, OpenIOC) | Available |
+| **Enrichment** | IOC lookups (VirusTotal, Shodan, AbuseIPDB) | Planned |
+| **IOC Patterns** | Custom indicator types (YARA, Bitcoin, MITRE ATT&CK) | Planned |
+| **Import** | Ingest from feeds (TAXII, MISP, OpenCTI) | Planned |
+
 ## Project Structure
 
 ```
@@ -177,7 +218,8 @@ threatpad/
 | `GET /api/workspaces/:id/notes/:noteId` | Get note |
 | `PUT /api/workspaces/:id/notes/:noteId/content` | Update note content |
 | `POST /api/notes/:noteId/extract-iocs` | Extract IOCs from note |
-| `GET /api/notes/:noteId/iocs/export?format=stix` | Export as STIX 2.1 |
+| `GET /api/notes/:noteId/iocs/export?format=stix` | Export IOCs (any registered format) |
+| `GET /api/export-formats` | List available export plugins |
 | `GET /api/workspaces/:id/search?q=query` | Full-text search |
 | `GET /api/health` | Health check |
 

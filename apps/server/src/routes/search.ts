@@ -20,18 +20,23 @@ export async function searchRoutes(app: FastifyInstance) {
     const limitNum = parseInt(limit);
     const offset = (pageNum - 1) * limitNum;
 
-    // Build tsquery from search terms
+    // Build tsquery from search terms (prefix match with :*)
     const searchTerms = q.trim().split(/\s+/).map((t) => t.replace(/[^a-zA-Z0-9]/g, '')).filter(Boolean);
-    const tsquery = searchTerms.join(' & ');
+    const tsquery = searchTerms.map((t) => `${t}:*`).join(' & ');
+    const likePattern = `%${q.trim().toLowerCase()}%`;
 
-    // Base query with full-text search
+    // Full-text search OR substring ILIKE fallback
     let conditions = sql`
       ${schema.notes.workspaceId} = ${workspaceId}
       AND ${schema.notes.deletedAt} IS NULL
       AND (
-        to_tsvector('english', coalesce(${schema.notes.title}, '')) ||
-        to_tsvector('english', coalesce(${schema.notes.contentMd}, ''))
-      ) @@ to_tsquery('english', ${tsquery})
+        (
+          to_tsvector('english', coalesce(${schema.notes.title}, '')) ||
+          to_tsvector('english', coalesce(${schema.notes.contentMd}, ''))
+        ) @@ to_tsquery('english', ${tsquery})
+        OR lower(coalesce(${schema.notes.title}, '')) LIKE ${likePattern}
+        OR lower(coalesce(${schema.notes.contentMd}, '')) LIKE ${likePattern}
+      )
     `;
 
     // Filter by tags if provided

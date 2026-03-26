@@ -69,6 +69,14 @@ interface IocData {
   confidence: number;
 }
 
+interface ExportFormatInfo {
+  key: string;
+  label: string;
+  description?: string;
+  fileExtension: string;
+  contentType: string;
+}
+
 interface TagData {
   id: string;
   name: string;
@@ -123,6 +131,9 @@ export default function NoteEditorPage() {
   const [noteTags, setNoteTags] = useState<TagData[]>([]);
   const [workspaceTags, setWorkspaceTags] = useState<TagData[]>([]);
   const [showTagPicker, setShowTagPicker] = useState(false);
+
+  // Export formats (plugin-based)
+  const [exportFormats, setExportFormats] = useState<ExportFormatInfo[]>([]);
 
   // Create tag state
   const [showCreateTag, setShowCreateTag] = useState(false);
@@ -183,6 +194,11 @@ export default function NoteEditorPage() {
     // Load existing IOCs
     api.get<{ data: IocData[] }>(`/api/notes/${noteId}/iocs`)
       .then((res) => setIocs(res.data))
+      .catch(() => {});
+
+    // Load available export formats
+    api.get<{ data: ExportFormatInfo[] }>('/api/export-formats')
+      .then((res) => setExportFormats(res.data))
       .catch(() => {});
   }, [noteId, workspaceId, isNew, router]);
 
@@ -252,6 +268,7 @@ export default function NoteEditorPage() {
     try {
       await api.post(`/api/workspaces/${workspaceId}/notes/${noteId}/tags`, { tagIds: [tag.id] });
       setNoteTags((prev) => [...prev, tag]);
+      window.dispatchEvent(new CustomEvent('threatpad:refresh-tags'));
     } catch {}
   }, [workspaceId, noteId]);
 
@@ -259,6 +276,7 @@ export default function NoteEditorPage() {
     try {
       await api.delete(`/api/workspaces/${workspaceId}/notes/${noteId}/tags/${tagId}`);
       setNoteTags((prev) => prev.filter((t) => t.id !== tagId));
+      window.dispatchEvent(new CustomEvent('threatpad:refresh-tags'));
     } catch {}
   }, [workspaceId, noteId]);
 
@@ -275,6 +293,7 @@ export default function NoteEditorPage() {
       setNoteTags((prev) => [...prev, res.data]);
       setNewTagName('');
       setShowCreateTag(false);
+      window.dispatchEvent(new CustomEvent('threatpad:refresh-tags'));
     } catch {}
   }, [workspaceId, noteId, newTagName, newTagColor]);
 
@@ -348,52 +367,19 @@ export default function NoteEditorPage() {
     URL.revokeObjectURL(url);
   }, [note, title]);
 
-  const handleExportJson = useCallback(() => {
-    const json = JSON.stringify(iocs.map((ioc) => ({
-      type: ioc.type,
-      value: ioc.value,
-      defanged: ioc.defangedValue,
-      confidence: ioc.confidence,
-    })), null, 2);
-    const blob = new Blob([json], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `iocs-${noteId}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }, [noteId, iocs]);
-
-  const handleExportCsv = useCallback(() => {
-    const header = 'type,value,defanged_value,confidence';
-    const rows = iocs.map((ioc) =>
-      `"${ioc.type}","${ioc.value}","${ioc.defangedValue || ''}","${ioc.confidence}"`,
-    );
-    const csv = [header, ...rows].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `iocs-${noteId}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }, [noteId, iocs]);
-
-  const handleExportStix = useCallback(async () => {
+  const handleExportIocs = useCallback(async (format: ExportFormatInfo) => {
     try {
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002'}/api/notes/${noteId}/iocs/export?format=stix`,
+        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002'}/api/notes/${noteId}/iocs/export?format=${format.key}`,
         {
           headers: { Authorization: `Bearer ${useAuthStore.getState().accessToken}` },
         },
       );
-      const stixBundle = await res.json();
-      const json = JSON.stringify(stixBundle, null, 2);
-      const blob = new Blob([json], { type: 'application/json' });
+      const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `stix-bundle-${noteId}.json`;
+      a.download = `iocs-${noteId}${format.fileExtension}`;
       a.click();
       URL.revokeObjectURL(url);
     } catch {}
@@ -582,10 +568,12 @@ export default function NoteEditorPage() {
                   <Download className="h-4 w-4 mr-2" />
                   Export as Markdown
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleExportStix}>
-                  <Download className="h-4 w-4 mr-2" />
-                  Export as STIX 2.1
-                </DropdownMenuItem>
+                {exportFormats.map((fmt) => (
+                  <DropdownMenuItem key={fmt.key} onClick={() => handleExportIocs(fmt)}>
+                    <Download className="h-4 w-4 mr-2" />
+                    Export IOCs as {fmt.label}
+                  </DropdownMenuItem>
+                ))}
                 <DropdownMenuItem onClick={handleDuplicate}>
                   <Copy className="h-4 w-4 mr-2" />
                   Duplicate
@@ -660,15 +648,11 @@ export default function NoteEditorPage() {
           </div>
           <div className="border-t border-border p-3 space-y-2">
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" className="flex-1 text-xs" onClick={handleExportJson}>
-                JSON
-              </Button>
-              <Button variant="outline" size="sm" className="flex-1 text-xs" onClick={handleExportCsv}>
-                CSV
-              </Button>
-              <Button variant="outline" size="sm" className="flex-1 text-xs" onClick={handleExportStix}>
-                STIX 2.1
-              </Button>
+              {exportFormats.map((fmt) => (
+                <Button key={fmt.key} variant="outline" size="sm" className="flex-1 text-xs" onClick={() => handleExportIocs(fmt)}>
+                  {fmt.label}
+                </Button>
+              ))}
             </div>
           </div>
         </div>

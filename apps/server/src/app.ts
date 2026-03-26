@@ -21,6 +21,7 @@ import { searchRoutes } from './routes/search.js';
 import { iocRoutes } from './routes/iocs.js';
 import { versionRoutes } from './routes/versions.js';
 import { auditLogRoutes } from './routes/audit-logs.js';
+import { exportFormatRoutes } from './routes/export-formats.js';
 import { registerYjsWebSocket } from './ws/yjs-server.js';
 
 export async function buildApp() {
@@ -103,6 +104,7 @@ export async function buildApp() {
   await app.register(iocRoutes, { prefix: '/api/notes' });
   await app.register(versionRoutes, { prefix: '/api/notes' });
   await app.register(auditLogRoutes, { prefix: '/api/workspaces' });
+  await app.register(exportFormatRoutes, { prefix: '/api/export-formats' });
 
   // WebSocket (Yjs real-time collaboration)
   registerYjsWebSocket(app);

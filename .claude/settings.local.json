@@ -32,7 +32,8 @@
       "Bash(docker system:*)",
       "Bash(docker builder:*)",
       "Bash(taskkill //F //IM \"com.docker.backend.exe\")",
-      "Bash(wsl.exe --shutdown)"
+      "Bash(wsl.exe --shutdown)",
+      "Bash(find /c/Users/Admin/Documents/Projects/ThreatPad/apps/web -type f -name *.tsx)"
     ]
   }
 }

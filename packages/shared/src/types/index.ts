@@ -7,3 +7,4 @@ export * from './ioc';
 export * from './template';
 export * from './audit';
 export * from './api';
+export * from './export-plugin';

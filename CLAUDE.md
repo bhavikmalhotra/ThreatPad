@@ -43,6 +43,9 @@ pnpm --filter @threatpad/db studio  # Drizzle Studio GUI
 # Production build
 pnpm build
 
+# Production Docker (all services)
+docker compose -f docker-compose.prod.yml up -d
+
 # Lint / type-check
 pnpm lint
 ```
@@ -118,6 +121,7 @@ Key exports:
 - `auth.ts` — JWT verification (HS256 via jose), `verifyJwt` preHandler, `verifyToken` for WS auth, token generation utilities
 - `rbac.ts` — `resolveWorkspaceRole` preHandler + `requireRole('editor')` factory
 - `audit.ts` — `audit()` decorator for logging user actions
+- `exporters/` — Plugin-based export system (see Plugin Architecture below)
 
 **Routes** (`src/routes/`):
 - `auth.ts` — register, login (bcrypt), refresh token rotation, logout, GET/PATCH /me, change-password, Google OAuth, GitHub OAuth, forgot/reset password, email verification, resend verification
@@ -127,7 +131,8 @@ Key exports:
 - `tags.ts` — CRUD (editor role) + add/remove tags from notes (via `noteTags` junction)
 - `templates.ts` — list (system + workspace), create, get, delete (protects system)
 - `search.ts` — full-text search via Postgres `to_tsvector`/`to_tsquery`
-- `iocs.ts` — IOC extraction (clears existing then re-inserts to prevent duplicates), list, export (JSON/CSV/STIX 2.1), delete. STIX export generates a full Bundle with Identity, Report, and Indicator objects with proper STIX patterns per IOC type.
+- `iocs.ts` — IOC extraction (clears existing then re-inserts to prevent duplicates), list, plugin-based export via `exportRegistry`, delete
+- `export-formats.ts` — `GET /api/export-formats` returns available export plugins (frontend auto-discovers)
 - `versions.ts` — list, get, diff (line-based), restore (creates new version), manual snapshot
 - `audit-logs.ts` — paginated audit log viewer with filters
 
@@ -159,6 +164,30 @@ Key tables: `users`, `workspaces`, `workspace_members`, `folders`, `notes`, `not
 
 Drizzle relations are defined in `src/schema/relations.ts` — enables `with: {}` eager loading in queries.
 
+### Plugin Architecture
+
+ThreatPad uses a simple registry-based plugin system. A plugin is an object implementing a typed interface, registered at startup. No dynamic loading or config files — just import and register.
+
+**Export Plugins** (`apps/server/src/plugins/exporters/`):
+- **Interface:** `ExportPlugin` (defined in `packages/shared/src/types/export-plugin.ts`) — `key`, `label`, `fileExtension`, `contentType`, `export(params) → { data, contentType, filename }`
+- **Registry:** `exportRegistry` in `registry.ts` — `register()`, `get(key)`, `list()`
+- **Built-in plugins:** `json-exporter.ts`, `csv-exporter.ts`, `stix-exporter.ts`
+- **Barrel:** `index.ts` imports and registers all built-in exporters
+- **Discovery:** `GET /api/export-formats` returns available formats; frontend renders export buttons dynamically
+
+**Adding a new export plugin:**
+1. Create `apps/server/src/plugins/exporters/my-exporter.ts` implementing `ExportPlugin`
+2. Add one line to `exporters/index.ts`: `exportRegistry.register(myExporter);`
+3. No frontend changes needed — buttons appear automatically
+
+**Future plugin types** (same registry pattern, not yet implemented):
+- **Enrichment plugins** — IOC lookups against external services (VirusTotal, Shodan, AbuseIPDB)
+- **IOC pattern plugins** — custom indicator types (YARA rules, Bitcoin addresses, MITRE ATT&CK IDs)
+- **Import plugins** — ingest from MISP, OpenCTI, TAXII feeds
+- **Notification plugins** — webhooks, Slack alerts on IOC detection
+
+Each future plugin type follows the same approach: define an interface in `packages/shared/src/types/`, create a registry in `apps/server/src/plugins/`, refactor existing hardcoded logic into plugin objects.
+
 ### Current State
 
 Frontend and backend are fully built and wired together. All pages fetch real data from the backend API (no mock data remains). Auth flow (email/password + Google/GitHub OAuth) is complete. To run end-to-end: start Docker (Postgres + Redis), push schema, seed data, start server (port 3002) and web app (port 3000).
@@ -173,7 +202,7 @@ Frontend and backend are fully built and wired together. All pages fetch real da
 - Tag CRUD (create inline in note editor, delete from sidebar)
 - Folder tree with subfolders and notes displayed inside folders
 - IOC extraction (on-demand, deduplicates, clears stale data)
-- IOC export: JSON, CSV, STIX 2.1 (full bundle with Report + Indicators)
+- IOC export: plugin-based — JSON, CSV, STIX 2.1 built-in (community can add more via export plugin system)
 - Version history with auto-snapshots (every 5 min) and manual restore
 - Export note as Markdown
 - Full-text search

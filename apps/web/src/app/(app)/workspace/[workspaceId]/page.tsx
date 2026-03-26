@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import {
   FileText,
   Plus,
@@ -38,7 +38,9 @@ interface NoteListItem {
 export default function WorkspacePage() {
   const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
   const workspaceId = params.workspaceId as string;
+  const tagFilter = searchParams.get('tags')?.split(',').filter(Boolean) || [];
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
   const [searchQuery, setSearchQuery] = useState('');
   const [notes, setNotes] = useState<NoteListItem[]>([]);
@@ -56,11 +58,15 @@ export default function WorkspacePage() {
       .finally(() => setLoading(false));
   }, [workspaceId]);
 
-  const filteredNotes = notes.filter(
-    (n) =>
+  const filteredNotes = notes.filter((n) => {
+    const matchesSearch =
       n.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (n.snippet || '').toLowerCase().includes(searchQuery.toLowerCase()),
-  );
+      (n.snippet || '').toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesTags =
+      tagFilter.length === 0 ||
+      tagFilter.some((tagId) => n.tags.some((t) => t.id === tagId));
+    return matchesSearch && matchesTags;
+  });
 
   const handleCreateNote = async () => {
     try {

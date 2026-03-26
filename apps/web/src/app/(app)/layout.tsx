@@ -12,7 +12,7 @@ import type { WorkspaceWithRole, FolderTreeNode, Tag } from '@threatpad/shared';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const { activeWorkspaceId, setActiveWorkspaceId } = useUIStore();
+  const { activeWorkspaceId, setActiveWorkspaceId, toggleTheme } = useUIStore();
   const { isAuthenticated, accessToken, user } = useAuthStore();
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
@@ -90,12 +90,18 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   );
 
   const handleTagToggle = useCallback((tagId: string) => {
-    setSelectedTags((prev) =>
-      prev.includes(tagId)
+    setSelectedTags((prev) => {
+      const next = prev.includes(tagId)
         ? prev.filter((t) => t !== tagId)
-        : [...prev, tagId],
-    );
-  }, []);
+        : [...prev, tagId];
+      // Navigate to workspace page with tag filter
+      if (activeWorkspaceId) {
+        const params = next.length > 0 ? `?tags=${next.join(',')}` : '';
+        router.push(`/workspace/${activeWorkspaceId}${params}`);
+      }
+      return next;
+    });
+  }, [activeWorkspaceId, router]);
 
   const handleDeleteTag = useCallback(async (tagId: string) => {
     if (!activeWorkspaceId) return;
@@ -207,7 +213,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           onDeleteFolder={() => {}}
           onTagToggle={handleTagToggle}
           onDeleteTag={handleDeleteTag}
-          onSearch={() => {}}
+          onSearch={(query) => {
+            if (activeWorkspace && query.length > 2) {
+              router.push(`/workspace/${activeWorkspace.id}/search?q=${encodeURIComponent(query)}`);
+            }
+          }}
           onOpenTemplates={() => {}}
           onOpenSettings={() => {
             if (activeWorkspace) router.push(`/workspace/${activeWorkspace.id}/settings`);
@@ -220,9 +230,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         onCreateNote={handleCreateNote}
         onCreateFolder={handleCreateFolder}
         onNavigateSettings={() => router.push('/settings/profile')}
-        onToggleTheme={() => {}}
+        onToggleTheme={toggleTheme}
         onLogout={handleLogout}
-        onSearch={() => {}}
+        onSearch={(query) => {
+          if (activeWorkspace && query.length > 2) {
+            router.push(`/workspace/${activeWorkspace.id}/search?q=${encodeURIComponent(query)}`);
+          }
+        }}
       />
     </div>
   );

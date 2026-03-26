@@ -1,24 +1,8 @@
-import crypto from 'crypto';
 import type { FastifyInstance } from 'fastify';
 import { eq } from 'drizzle-orm';
 import { db, schema } from '@threatpad/db';
-import { extractIocs, defang } from '@threatpad/shared';
-
-function iocToStixPattern(type: string, value: string): string {
-  const escaped = value.replace(/'/g, "\\'");
-  switch (type) {
-    case 'ipv4': return `[ipv4-addr:value = '${escaped}']`;
-    case 'ipv6': return `[ipv6-addr:value = '${escaped}']`;
-    case 'domain': return `[domain-name:value = '${escaped}']`;
-    case 'url': return `[url:value = '${escaped}']`;
-    case 'email': return `[email-addr:value = '${escaped}']`;
-    case 'md5': return `[file:hashes.MD5 = '${escaped}']`;
-    case 'sha1': return `[file:hashes.'SHA-1' = '${escaped}']`;
-    case 'sha256': return `[file:hashes.'SHA-256' = '${escaped}']`;
-    case 'cve': return `[vulnerability:name = '${escaped}']`;
-    default: return `[artifact:payload_bin = '${escaped}']`;
-  }
-}
+import { extractIocs } from '@threatpad/shared';
+import { exportRegistry } from '../plugins/exporters/index.js';
 
 export async function iocRoutes(app: FastifyInstance) {
   app.addHook('preHandler', (app as any).verifyJwt);
@@ -78,133 +62,33 @@ export async function iocRoutes(app: FastifyInstance) {
     return { data: iocs };
   });
 
-  // Export IOCs
+  // Export IOCs (plugin-based)
   app.get('/:noteId/iocs/export', async (request, reply) => {
     const { noteId } = request.params as { noteId: string };
     const { format = 'json' } = request.query as { format?: string };
+
+    const plugin = exportRegistry.get(format);
+    if (!plugin) {
+      const available = exportRegistry.list().map((f) => f.key).join(', ');
+      return reply.status(400).send({
+        error: 'Bad Request',
+        message: `Unknown export format "${format}". Available: ${available}`,
+      });
+    }
 
     const iocs = await db.query.noteIocs.findMany({
       where: eq(schema.noteIocs.noteId, noteId),
     });
 
-    if (format === 'csv') {
-      const header = 'type,value,defanged_value,confidence,context';
-      const rows = iocs.map((ioc) =>
-        `"${ioc.type}","${ioc.value}","${ioc.defangedValue || defang(ioc.value)}","${ioc.confidence}","${(ioc.context || '').replace(/"/g, '""')}"`,
-      );
-      const csv = [header, ...rows].join('\n');
+    const note = await db.query.notes.findFirst({
+      where: eq(schema.notes.id, noteId),
+    });
 
-      reply.header('Content-Type', 'text/csv');
-      reply.header('Content-Disposition', `attachment; filename="iocs-${noteId}.csv"`);
-      return reply.send(csv);
-    }
+    const result = await plugin.export({ noteId, iocs, note });
 
-    if (format === 'stix') {
-      const note = await db.query.notes.findFirst({
-        where: eq(schema.notes.id, noteId),
-      });
-
-      const now = new Date().toISOString();
-      const stixObjects: any[] = [];
-
-      // Create an identity for the exporter
-      const identityId = `identity--${crypto.randomUUID()}`;
-      stixObjects.push({
-        type: 'identity',
-        spec_version: '2.1',
-        id: identityId,
-        created: now,
-        modified: now,
-        name: 'ThreatPad',
-        identity_class: 'tool',
-      });
-
-      // If we have a note, create a Report object
-      if (note) {
-        const reportId = `report--${crypto.randomUUID()}`;
-        const indicatorIds: string[] = [];
-
-        // Create Indicator for each IOC
-        for (const ioc of iocs) {
-          const indicatorId = `indicator--${crypto.randomUUID()}`;
-          indicatorIds.push(indicatorId);
-
-          const pattern = iocToStixPattern(ioc.type, ioc.value);
-          stixObjects.push({
-            type: 'indicator',
-            spec_version: '2.1',
-            id: indicatorId,
-            created: ioc.firstSeenAt || now,
-            modified: now,
-            name: `${ioc.type.toUpperCase()}: ${ioc.value}`,
-            description: ioc.context || undefined,
-            pattern,
-            pattern_type: 'stix',
-            valid_from: ioc.firstSeenAt || now,
-            confidence: ioc.confidence || 100,
-            created_by_ref: identityId,
-            labels: [ioc.type],
-          });
-        }
-
-        // Create the Report object linking all indicators
-        stixObjects.push({
-          type: 'report',
-          spec_version: '2.1',
-          id: reportId,
-          created: note.createdAt,
-          modified: note.updatedAt,
-          name: note.title,
-          description: `Exported from ThreatPad note: ${note.title}`,
-          published: now,
-          object_refs: indicatorIds,
-          created_by_ref: identityId,
-          report_types: ['threat-report'],
-        });
-      } else {
-        // No note context — just export indicators
-        for (const ioc of iocs) {
-          const indicatorId = `indicator--${crypto.randomUUID()}`;
-          const pattern = iocToStixPattern(ioc.type, ioc.value);
-          stixObjects.push({
-            type: 'indicator',
-            spec_version: '2.1',
-            id: indicatorId,
-            created: ioc.firstSeenAt || now,
-            modified: now,
-            name: `${ioc.type.toUpperCase()}: ${ioc.value}`,
-            pattern,
-            pattern_type: 'stix',
-            valid_from: ioc.firstSeenAt || now,
-            confidence: ioc.confidence || 100,
-            created_by_ref: identityId,
-          });
-        }
-      }
-
-      const bundle = {
-        type: 'bundle',
-        id: `bundle--${crypto.randomUUID()}`,
-        objects: stixObjects,
-      };
-
-      reply.header('Content-Type', 'application/json');
-      reply.header('Content-Disposition', `attachment; filename="stix-${noteId}.json"`);
-      return reply.send(bundle);
-    }
-
-    // JSON export (default)
-    const exportData = iocs.map((ioc) => ({
-      type: ioc.type,
-      value: ioc.value,
-      defanged: ioc.defangedValue || defang(ioc.value),
-      confidence: ioc.confidence,
-      context: ioc.context,
-    }));
-
-    reply.header('Content-Type', 'application/json');
-    reply.header('Content-Disposition', `attachment; filename="iocs-${noteId}.json"`);
-    return reply.send({ iocs: exportData, noteId, exportedAt: new Date().toISOString() });
+    reply.header('Content-Type', result.contentType);
+    reply.header('Content-Disposition', `attachment; filename="${result.filename}"`);
+    return reply.send(typeof result.data === 'object' ? JSON.stringify(result.data) : result.data);
   });
 
   // Delete a specific IOC
