@@ -4,6 +4,8 @@ A collaborative, real-time note-taking platform built for Cyber Threat Intellige
 
 ThreatPad combines the speed of modern productivity tools with CTI-specific capabilities: IOC auto-extraction, STIX 2.1 export, structured threat templates, and fine-grained access control.
 
+**[Live Demo](https://threat-pad-web.vercel.app)** — login with `demo@threatpad.io` / `password123`
+
 ![WhatsApp Image 2026-03-26 at 8 39 17 PM (2)](https://github.com/user-attachments/assets/2470dcb1-6aea-425c-9fbe-75e809c3c62b)
 
 ## Features
