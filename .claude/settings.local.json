@@ -33,7 +33,9 @@
       "Bash(docker builder:*)",
       "Bash(taskkill //F //IM \"com.docker.backend.exe\")",
       "Bash(wsl.exe --shutdown)",
-      "Bash(find /c/Users/Admin/Documents/Projects/ThreatPad/apps/web -type f -name *.tsx)"
+      "Bash(find /c/Users/Admin/Documents/Projects/ThreatPad/apps/web -type f -name *.tsx)",
+      "Bash(node -e \"const bcrypt = require\\(''bcrypt''\\); bcrypt.hash\\(''password123'', 12\\).then\\(h => console.log\\(h\\)\\);\")",
+      "Bash(echo \"UPDATE users SET password_hash = ''''$2b$12$cxMnUGzSsyxODWup1EiwJO3RyDwWSHJeUlQzYxhJIK3Rv4Wt6FT1m'''' WHERE email = ''''demo@threatpad.io'''' RETURNING password_hash;\")"
     ]
   }
 }

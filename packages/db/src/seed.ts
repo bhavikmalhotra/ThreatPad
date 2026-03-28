@@ -27,8 +27,8 @@ async function seed() {
       displayName: 'Demo Analyst',
       avatarColor: '#6366f1',
       emailVerified: true,
-      // password: "password123" hashed with bcrypt
-      passwordHash: '$2b$12$LJ3hJg0VqECVH.VoFpCVxOCfN3YkRMzDBIRU8BIFqm7GfCqsU.TGq',
+      // password: "password123" hashed with bcrypt (cost 12)
+      passwordHash: '$2b$12$cxMnUGzSsyxODWup1EiwJO3RyDwWSHJeUlQzYxhJIK3Rv4Wt6FT1m',
     })
     .onConflictDoNothing()
     .returning();

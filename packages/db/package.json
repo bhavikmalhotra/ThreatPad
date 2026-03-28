@@ -15,6 +15,7 @@
     "push": "drizzle-kit push",
     "studio": "drizzle-kit studio",
     "seed": "tsx src/seed.ts",
+    "seed-demo": "tsx src/seed-demo.ts",
     "lint": "tsc --noEmit"
   },
   "dependencies": {
