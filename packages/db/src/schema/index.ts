@@ -7,4 +7,5 @@ export * from './tags';
 export * from './iocs';
 export * from './audit-logs';
 export * from './auth';
+export * from './uploads';
 export * from './relations';

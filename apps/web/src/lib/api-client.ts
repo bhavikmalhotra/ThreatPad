@@ -114,6 +114,43 @@ class ApiClient {
   delete<T>(endpoint: string, options?: RequestOptions) {
     return this.request<T>(endpoint, { ...options, method: 'DELETE' });
   }
+
+  async upload<T>(endpoint: string, file: File): Promise<T> {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const token = useAuthStore.getState().accessToken;
+    const headers: Record<string, string> = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    let response = await fetch(`${this.baseUrl}${endpoint}`, {
+      method: 'POST',
+      headers,
+      body: formData,
+      credentials: 'include',
+    });
+
+    if (response.status === 401) {
+      const refreshed = await this.refreshToken();
+      if (refreshed) {
+        headers['Authorization'] = `Bearer ${useAuthStore.getState().accessToken}`;
+        response = await fetch(`${this.baseUrl}${endpoint}`, {
+          method: 'POST',
+          headers,
+          body: formData,
+          credentials: 'include',
+        });
+      }
+      if (!response.ok) {
+        useAuthStore.getState().logout();
+        window.location.href = '/login';
+        throw new Error('Session expired');
+      }
+    }
+
+    if (!response.ok) throw await this.handleError(response);
+    return response.json();
+  }
 }
 
 export const api = new ApiClient(API_URL);

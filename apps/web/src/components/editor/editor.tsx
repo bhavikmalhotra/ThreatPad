@@ -9,6 +9,7 @@ import TaskItem from '@tiptap/extension-task-item';
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
 import Placeholder from '@tiptap/extension-placeholder';
 import LinkExtension from '@tiptap/extension-link';
+import Image from '@tiptap/extension-image';
 import { Table } from '@tiptap/extension-table';
 import { TableRow } from '@tiptap/extension-table-row';
 import { TableCell } from '@tiptap/extension-table-cell';
@@ -17,11 +18,24 @@ import { common, createLowlight } from 'lowlight';
 import { Toolbar } from './toolbar';
 import { PresenceBar, type PresenceUser } from './presence-bar';
 import { cn } from '@/lib/utils';
+import { api } from '@/lib/api-client';
+import { useAuthStore } from '@/stores/auth-store';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002';
 const lowlight = createLowlight(common);
+
+async function uploadImage(file: File, workspaceId: string): Promise<string> {
+  const res = await api.upload<{ id: string; url: string }>(
+    `/api/workspaces/${workspaceId}/uploads`,
+    file,
+  );
+  const token = useAuthStore.getState().accessToken;
+  return `${API_URL}${res.url}?token=${token}`;
+}
 
 interface NoteEditorProps {
   initialContent?: string;
+  workspaceId?: string;
   presenceUsers?: PresenceUser[];
   editable?: boolean;
   onUpdate?: (content: string) => void;
@@ -29,6 +43,7 @@ interface NoteEditorProps {
 
 export function NoteEditor({
   initialContent = '',
+  workspaceId,
   presenceUsers = [],
   editable = true,
   onUpdate,
@@ -53,6 +68,7 @@ export function NoteEditor({
         openOnClick: false,
         HTMLAttributes: { class: 'text-primary underline cursor-pointer' },
       }),
+      Image.configure({ inline: false }),
       Table.configure({ resizable: true }),
       TableRow,
       TableCell,
@@ -64,6 +80,44 @@ export function NoteEditor({
       attributes: {
         class:
           'prose prose-invert prose-sm max-w-none focus:outline-none min-h-[500px] px-8 py-6',
+      },
+      handleDrop(view, event) {
+        const files = event.dataTransfer?.files;
+        if (!files?.length) return false;
+        const file = files[0];
+        if (!file || !file.type.startsWith('image/')) return false;
+        if (!workspaceId) return false;
+        event.preventDefault();
+        uploadImage(file, workspaceId).then((src) => {
+          const pos = view.posAtCoords({ left: event.clientX, top: event.clientY });
+          const imageNode = view.state.schema.nodes.image;
+          if (pos && imageNode) {
+            const node = imageNode.create({ src });
+            const tr = view.state.tr.insert(pos.pos, node);
+            view.dispatch(tr);
+          }
+        }).catch((err) => console.error('Image upload failed:', err));
+        return true;
+      },
+      handlePaste(view, event) {
+        const items = event.clipboardData?.items;
+        if (!items) return false;
+        for (const item of items) {
+          if (item.type.startsWith('image/')) {
+            const file = item.getAsFile();
+            if (!file || !workspaceId) return false;
+            event.preventDefault();
+            uploadImage(file, workspaceId).then((src) => {
+              const imageNode = view.state.schema.nodes.image;
+              if (!imageNode) return;
+              const node = imageNode.create({ src });
+              const tr = view.state.tr.replaceSelectionWith(node);
+              view.dispatch(tr);
+            }).catch((err) => console.error('Image upload failed:', err));
+            return true;
+          }
+        }
+        return false;
       },
     },
     onUpdate: ({ editor: e }) => {
@@ -101,7 +155,7 @@ export function NoteEditor({
     <div className="flex flex-col h-full">
       <PresenceBar users={presenceUsers} />
       <div className="flex items-center border-b border-border">
-        {!previewMode && <div className="flex-1"><Toolbar editor={editor} /></div>}
+        {!previewMode && <div className="flex-1"><Toolbar editor={editor} workspaceId={workspaceId} /></div>}
         {previewMode && <div className="flex-1" />}
         <div className="flex items-center gap-0.5 px-3 py-1.5 shrink-0">
           <button

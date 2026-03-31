@@ -35,6 +35,9 @@ const envSchema = z.object({
 
   // Domain filtering — comma-separated list of allowed email domains (empty = allow all)
   ALLOWED_EMAIL_DOMAINS: z.string().default(''),
+
+  // File uploads
+  UPLOAD_DIR: z.string().default('./uploads'),
 });
 
 export const env = envSchema.parse(process.env);

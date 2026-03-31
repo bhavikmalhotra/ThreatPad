@@ -54,6 +54,9 @@ services:
       SELF_HOSTED: ${SELF_HOSTED:-true}
       DISABLE_REGISTRATION: ${DISABLE_REGISTRATION:-false}
       ALLOWED_EMAIL_DOMAINS: ${ALLOWED_EMAIL_DOMAINS:-}
+      UPLOAD_DIR: /app/uploads
+    volumes:
+      - uploads:/app/uploads
     depends_on:
       postgres:
         condition: service_healthy
@@ -78,3 +81,4 @@ services:
 volumes:
   pgdata:
   redisdata:
+  uploads:

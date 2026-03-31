@@ -8,6 +8,7 @@ import { tags, noteTags } from './tags';
 import { noteIocs } from './iocs';
 import { auditLogs } from './audit-logs';
 import { refreshTokens, verificationTokens, workspaceInvitations } from './auth';
+import { uploads } from './uploads';
 
 // ── Users ──
 export const usersRelations = relations(users, ({ many }) => ({
@@ -18,6 +19,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   refreshTokens: many(refreshTokens),
   verificationTokens: many(verificationTokens),
   noteVersions: many(noteVersions),
+  uploads: many(uploads),
 }));
 
 // ── Workspaces ──
@@ -30,6 +32,7 @@ export const workspacesRelations = relations(workspaces, ({ one, many }) => ({
   templates: many(noteTemplates),
   auditLogs: many(auditLogs),
   invitations: many(workspaceInvitations),
+  uploads: many(uploads),
 }));
 
 // ── Workspace Members ──
@@ -116,4 +119,10 @@ export const verificationTokensRelations = relations(verificationTokens, ({ one 
 export const workspaceInvitationsRelations = relations(workspaceInvitations, ({ one }) => ({
   workspace: one(workspaces, { fields: [workspaceInvitations.workspaceId], references: [workspaces.id] }),
   inviter: one(users, { fields: [workspaceInvitations.invitedBy], references: [users.id] }),
+}));
+
+// ── Uploads ──
+export const uploadsRelations = relations(uploads, ({ one }) => ({
+  workspace: one(workspaces, { fields: [uploads.workspaceId], references: [workspaces.id] }),
+  uploader: one(users, { fields: [uploads.uploadedBy], references: [users.id] }),
 }));

@@ -2,6 +2,7 @@ import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import cookie from '@fastify/cookie';
 import rateLimit from '@fastify/rate-limit';
+import multipart from '@fastify/multipart';
 import websocket from '@fastify/websocket';
 import Redis from 'ioredis';
 import { db } from '@threatpad/db';
@@ -22,7 +23,9 @@ import { iocRoutes } from './routes/iocs.js';
 import { versionRoutes } from './routes/versions.js';
 import { auditLogRoutes } from './routes/audit-logs.js';
 import { exportFormatRoutes } from './routes/export-formats.js';
+import { uploadRoutes } from './routes/uploads.js';
 import { registerYjsWebSocket } from './ws/yjs-server.js';
+import { mkdir } from 'node:fs/promises';
 
 export async function buildApp() {
   const app = Fastify({
@@ -49,6 +52,10 @@ export async function buildApp() {
   await app.register(rateLimit, {
     max: 100,
     timeWindow: '1 minute',
+  });
+
+  await app.register(multipart, {
+    limits: { fileSize: 5 * 1024 * 1024, files: 1 },
   });
 
   await app.register(websocket);
@@ -105,6 +112,10 @@ export async function buildApp() {
   await app.register(versionRoutes, { prefix: '/api/notes' });
   await app.register(auditLogRoutes, { prefix: '/api/workspaces' });
   await app.register(exportFormatRoutes, { prefix: '/api/export-formats' });
+  await app.register(uploadRoutes, { prefix: '/api/workspaces' });
+
+  // Ensure uploads directory exists
+  await mkdir(env.UPLOAD_DIR, { recursive: true });
 
   // WebSocket (Yjs real-time collaboration)
   registerYjsWebSocket(app);

@@ -67,17 +67,18 @@ There are no tests yet.
 
 **Editor:** Tiptap 3 (ProseMirror-based) in `src/components/editor/`. Key config:
 - `immediatelyRender: false` is required to avoid SSR hydration errors
-- Extensions: StarterKit, CodeBlockLowlight (syntax highlighting via lowlight), Tables, TaskList, Highlight, Link, Placeholder
+- Extensions: StarterKit, CodeBlockLowlight (syntax highlighting via lowlight), Tables, TaskList, Highlight, Link, Image, Placeholder
 - Edit/Preview toggle — Edit mode shows WYSIWYG editor with toolbar; Preview mode renders content as clean read-only HTML with Tailwind Typography (`prose prose-invert`)
 - Content is stored as HTML in the `contentMd` field (not raw markdown)
 - Debounced auto-save (1 second) on both content and title changes
+- Image upload: paste, drag-drop, or toolbar button → uploads to server via `POST /api/workspaces/:id/uploads`, stores on disk, references by authenticated URL
 - Collaboration-ready (Yjs + y-websocket installed but not yet connected)
 
 **UI components:** Radix UI primitives wrapped with Tailwind in `src/components/ui/` (shadcn/ui pattern). Use `cn()` from `src/lib/utils.ts` for class merging.
 
 **Styling:** Tailwind CSS 4 with `@tailwindcss/typography` plugin and custom theme variables in `src/styles/globals.css`. Dark mode is the default (class `dark` on `<html>`). Primary color: `#6366f1` (indigo).
 
-**API client:** `src/lib/api-client.ts` — typed fetch wrapper (get, post, patch, put, delete) with automatic JWT refresh on 401. Reads token from Zustand auth store. Base URL from `NEXT_PUBLIC_API_URL`. Important: Content-Type header is only set when request has a body (DELETE requests with no body must not set it).
+**API client:** `src/lib/api-client.ts` — typed fetch wrapper (get, post, patch, put, delete, upload) with automatic JWT refresh on 401. Reads token from Zustand auth store. Base URL from `NEXT_PUBLIC_API_URL`. Important: Content-Type header is only set when request has a body (DELETE requests with no body must not set it). The `upload()` method uses FormData for multipart file uploads (does not set Content-Type — browser handles the boundary).
 
 **Cross-component communication:** Child pages dispatch `CustomEvent` on `window` to notify the layout to refresh data:
 - `threatpad:refresh-folders` — refreshes sidebar folder tree (e.g., after title change)
@@ -133,6 +134,7 @@ Key exports:
 - `search.ts` — full-text search via Postgres `to_tsvector`/`to_tsquery`
 - `iocs.ts` — IOC extraction (clears existing then re-inserts to prevent duplicates), list, plugin-based export via `exportRegistry`, delete
 - `export-formats.ts` — `GET /api/export-formats` returns available export plugins (frontend auto-discovers)
+- `uploads.ts` — authenticated image upload and serving (see Image Upload section below)
 - `versions.ts` — list, get, diff (line-based), restore (creates new version), manual snapshot
 - `audit-logs.ts` — paginated audit log viewer with filters
 
@@ -147,7 +149,7 @@ Key exports:
 - `yjs-server.ts` — Yjs CRDT sync via `@fastify/websocket`, awareness protocol, room management, debounced persistence
 - `persistence.ts` — load/persist Yjs document state to/from Postgres `yjs_state` bytea column
 
-**Config:** `src/config/env.ts` — Zod-validated env vars: DATABASE_URL, REDIS_URL, JWT_SECRET, JWT_REFRESH_SECRET, GOOGLE_CLIENT_ID/SECRET, GITHUB_CLIENT_ID/SECRET, RESEND_API_KEY, FROM_EMAIL, APP_URL, API_URL, CORS_ORIGIN. All have sensible dev defaults.
+**Config:** `src/config/env.ts` — Zod-validated env vars: DATABASE_URL, REDIS_URL, JWT_SECRET, JWT_REFRESH_SECRET, GOOGLE_CLIENT_ID/SECRET, GITHUB_CLIENT_ID/SECRET, RESEND_API_KEY, FROM_EMAIL, APP_URL, API_URL, CORS_ORIGIN, UPLOAD_DIR. All have sensible dev defaults.
 
 **Auth architecture:**
 - Email/password: bcrypt (cost 12), JWT access tokens (15min, HS256 via jose), HTTP-only refresh token cookies (7 days) with rotation
@@ -158,9 +160,9 @@ Key exports:
 
 ### Database (`packages/db`)
 
-**ORM:** Drizzle ORM with `postgres.js` driver. Schema in `src/schema/` (13 tables).
+**ORM:** Drizzle ORM with `postgres.js` driver. Schema in `src/schema/` (14 tables).
 
-Key tables: `users`, `workspaces`, `workspace_members`, `folders`, `notes`, `note_versions`, `note_permissions`, `note_templates`, `tags`, `note_tags`, `note_iocs`, `audit_logs`, `refresh_tokens`, `verification_tokens`, `workspace_invitations`.
+Key tables: `users`, `workspaces`, `workspace_members`, `folders`, `notes`, `note_versions`, `note_permissions`, `note_templates`, `tags`, `note_tags`, `note_iocs`, `uploads`, `audit_logs`, `refresh_tokens`, `verification_tokens`, `workspace_invitations`.
 
 Drizzle relations are defined in `src/schema/relations.ts` — enables `with: {}` eager loading in queries.
 

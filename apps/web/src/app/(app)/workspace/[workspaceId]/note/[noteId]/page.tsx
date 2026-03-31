@@ -599,6 +599,7 @@ export default function NoteEditorPage() {
         <div className="flex-1 overflow-hidden">
           <NoteEditor
             initialContent={note.contentMd}
+            workspaceId={workspaceId}
             presenceUsers={[]}
             editable={true}
             onUpdate={handleContentUpdate}

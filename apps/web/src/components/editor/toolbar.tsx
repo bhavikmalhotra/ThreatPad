@@ -1,5 +1,6 @@
 'use client';
 
+import { useRef } from 'react';
 import type { Editor } from '@tiptap/react';
 import {
   Bold,
@@ -20,10 +21,13 @@ import {
   Undo,
   Redo,
   CodeSquare,
+  ImagePlus,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
+import { api } from '@/lib/api-client';
+import { useAuthStore } from '@/stores/auth-store';
 import {
   Tooltip,
   TooltipContent,
@@ -31,8 +35,11 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002';
+
 interface ToolbarProps {
   editor: Editor | null;
+  workspaceId?: string;
 }
 
 interface ToolbarButtonProps {
@@ -80,8 +87,25 @@ function ToolbarButton({
   );
 }
 
-export function Toolbar({ editor }: ToolbarProps) {
+export function Toolbar({ editor, workspaceId }: ToolbarProps) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   if (!editor) return null;
+
+  const handleImageUpload = async (file: File) => {
+    if (!workspaceId) return;
+    try {
+      const res = await api.upload<{ id: string; url: string }>(
+        `/api/workspaces/${workspaceId}/uploads`,
+        file,
+      );
+      const token = useAuthStore.getState().accessToken;
+      const src = `${API_URL}${res.url}?token=${token}`;
+      editor.chain().focus().setImage({ src }).run();
+    } catch (err) {
+      console.error('Image upload failed:', err);
+    }
+  };
 
   return (
     <div className="flex items-center gap-0.5 border-b border-border bg-card px-2 py-1 flex-wrap">
@@ -221,6 +245,26 @@ export function Toolbar({ editor }: ToolbarProps) {
         }
         icon={Table}
         label="Insert Table"
+      />
+
+      <Separator orientation="vertical" className="mx-1 h-5" />
+
+      <ToolbarButton
+        onClick={() => fileInputRef.current?.click()}
+        icon={ImagePlus}
+        label="Insert Image"
+        disabled={!workspaceId}
+      />
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) handleImageUpload(file);
+          e.target.value = '';
+        }}
       />
     </div>
   );
