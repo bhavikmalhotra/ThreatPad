@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { FileText, Clock, Pin, TrendingUp, Loader2 } from 'lucide-react';
+import { FileText, Clock, Pin, TrendingUp, Loader2, PenTool } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { formatRelativeDate } from '@/lib/utils';
 import { useUIStore } from '@/stores/ui-store';
@@ -11,6 +11,7 @@ import { api } from '@/lib/api-client';
 interface NoteListItem {
   id: string;
   title: string;
+  type?: 'text' | 'drawing';
   updatedAt: string;
   pinned: boolean;
   tags: { id: string; name: string; color: string }[];
@@ -137,7 +138,11 @@ export default function DashboardPage() {
                 }
                 className="flex items-center gap-3 rounded-lg border border-border bg-card p-3 hover:bg-accent transition-colors text-left w-full"
               >
-                <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                {note.type === 'drawing' ? (
+                  <PenTool className="h-4 w-4 text-muted-foreground shrink-0" />
+                ) : (
+                  <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                )}
                 <div className="min-w-0 flex-1">
                   <div className="text-sm font-medium truncate">{note.title}</div>
                   <div className="flex items-center gap-2 mt-1">

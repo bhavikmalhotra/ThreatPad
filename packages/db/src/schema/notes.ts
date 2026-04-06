@@ -6,6 +6,7 @@ import { users } from './users';
 import { workspaceRoleEnum } from './workspaces';
 
 export const noteVisibilityEnum = pgEnum('note_visibility', ['private', 'workspace', 'custom']);
+export const noteTypeEnum = pgEnum('note_type', ['text', 'drawing']);
 
 // Custom type for bytea
 const bytea = customType<{ data: Buffer }>({
@@ -21,6 +22,7 @@ export const notes = pgTable('notes', {
   title: varchar('title', { length: 500 }).notNull().default('Untitled'),
   contentMd: text('content_md').notNull().default(''),
   yjsState: bytea('yjs_state'),
+  type: noteTypeEnum('type').notNull().default('text'),
   visibility: noteVisibilityEnum('visibility').notNull().default('workspace'),
   templateId: uuid('template_id').references(() => noteTemplates.id),
   createdBy: uuid('created_by').notNull().references(() => users.id),

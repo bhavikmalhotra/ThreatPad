@@ -35,7 +35,14 @@
       "Bash(wsl.exe --shutdown)",
       "Bash(find /c/Users/Admin/Documents/Projects/ThreatPad/apps/web -type f -name *.tsx)",
       "Bash(node -e \"const bcrypt = require\\(''bcrypt''\\); bcrypt.hash\\(''password123'', 12\\).then\\(h => console.log\\(h\\)\\);\")",
-      "Bash(echo \"UPDATE users SET password_hash = ''''$2b$12$cxMnUGzSsyxODWup1EiwJO3RyDwWSHJeUlQzYxhJIK3Rv4Wt6FT1m'''' WHERE email = ''''demo@threatpad.io'''' RETURNING password_hash;\")"
+      "Bash(echo \"UPDATE users SET password_hash = ''''$2b$12$cxMnUGzSsyxODWup1EiwJO3RyDwWSHJeUlQzYxhJIK3Rv4Wt6FT1m'''' WHERE email = ''''demo@threatpad.io'''' RETURNING password_hash;\")",
+      "Bash(cat \"/c/Users/Admin/Documents/Projects/ThreatPad/apps/web/src/app/\\(app\\)/workspace/[workspaceId]/layout.tsx\")",
+      "Bash(ls:*)",
+      "Bash(node:*)",
+      "Bash(find C:/Users/Admin/Documents/Projects/ThreatPad/node_modules/.pnpm -path *excalidraw*/dist/prod/index.d.ts)",
+      "Bash(find C:/Users/Admin/Documents/Projects/ThreatPad/node_modules/.pnpm -path *excalidraw* -name *.d.ts)",
+      "Bash(EXCALIDRAW_BASE=C:/Users/Admin/Documents/Projects/ThreatPad/node_modules/.pnpm/@excalidraw+excalidraw@0.18.0_@types+react-dom@19.2.3_@types+react@19.2.14__@types+react@19.2_pnok5ukygphkktc32ac76ldrki/node_modules/@excalidraw/excalidraw)",
+      "Read(//c/Users/Admin/Documents/Projects/ThreatPad/apps/web/$EXCALIDRAW_BASE/dist/types/excalidraw/**)"
     ]
   }
 }

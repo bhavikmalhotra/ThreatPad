@@ -10,6 +10,7 @@ import {
   Plus,
   Trash2,
   Pencil,
+  PenTool,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -29,6 +30,7 @@ interface FolderTreeProps {
   onNoteSelect: (noteId: string) => void;
   onCreateFolder: (parentId?: string) => void;
   onCreateNote: (folderId?: string) => void;
+  onCreateDrawing?: (folderId?: string) => void;
   onRenameFolder: (folderId: string) => void;
   onDeleteFolder: (folderId: string) => void;
 }
@@ -41,6 +43,7 @@ export function FolderTree({
   onNoteSelect,
   onCreateFolder,
   onCreateNote,
+  onCreateDrawing,
   onRenameFolder,
   onDeleteFolder,
 }: FolderTreeProps) {
@@ -56,6 +59,7 @@ export function FolderTree({
           onNoteSelect={onNoteSelect}
           onCreateFolder={onCreateFolder}
           onCreateNote={onCreateNote}
+          onCreateDrawing={onCreateDrawing}
           onRenameFolder={onRenameFolder}
           onDeleteFolder={onDeleteFolder}
           depth={0}
@@ -71,6 +75,7 @@ interface FolderNodeProps {
   onFolderSelect: (folderId: string) => void;
   onCreateFolder: (parentId?: string) => void;
   onCreateNote: (folderId?: string) => void;
+  onCreateDrawing?: (folderId?: string) => void;
   onRenameFolder: (folderId: string) => void;
   onDeleteFolder: (folderId: string) => void;
   depth: number;
@@ -83,6 +88,7 @@ function FolderNode({
   onNoteSelect,
   onCreateFolder,
   onCreateNote,
+  onCreateDrawing,
   onRenameFolder,
   onDeleteFolder,
   activeNoteId,
@@ -146,6 +152,10 @@ function FolderNode({
               <FileText className="h-4 w-4 mr-2" />
               New Note
             </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onCreateDrawing?.(folder.id)}>
+              <PenTool className="h-4 w-4 mr-2" />
+              New Drawing
+            </DropdownMenuItem>
             {folder.depth < 5 && (
               <DropdownMenuItem onClick={() => onCreateFolder(folder.id)}>
                 <Plus className="h-4 w-4 mr-2" />
@@ -179,6 +189,7 @@ function FolderNode({
               onNoteSelect={onNoteSelect}
               onCreateFolder={onCreateFolder}
               onCreateNote={onCreateNote}
+              onCreateDrawing={onCreateDrawing}
               onRenameFolder={onRenameFolder}
               onDeleteFolder={onDeleteFolder}
               depth={depth + 1}
@@ -194,7 +205,11 @@ function FolderNode({
               )}
               style={{ paddingLeft: `${(depth + 1) * 12 + 8 + 20}px` }}
             >
-              <FileText className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+              {note.type === 'drawing' ? (
+                <PenTool className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+              ) : (
+                <FileText className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+              )}
               <span className="truncate text-sidebar-foreground">{note.title || 'Untitled'}</span>
             </button>
           ))}

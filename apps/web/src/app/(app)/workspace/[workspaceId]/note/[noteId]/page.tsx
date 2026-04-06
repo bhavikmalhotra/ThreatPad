@@ -18,8 +18,10 @@ import {
   Share2,
   Plus,
   Users,
+  LayoutTemplate,
 } from 'lucide-react';
 import { NoteEditor } from '@/components/editor/editor';
+import { DrawingEditor } from '@/components/editor/drawing-editor';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -53,6 +55,7 @@ interface NoteData {
   id: string;
   title: string;
   contentMd: string;
+  type: 'text' | 'drawing';
   visibility: 'workspace' | 'private' | 'custom';
   pinned: boolean;
   createdBy: string;
@@ -367,6 +370,21 @@ export default function NoteEditorPage() {
     URL.revokeObjectURL(url);
   }, [note, title]);
 
+  const handleSaveAsTemplate = useCallback(async () => {
+    if (!note) return;
+    const name = prompt('Template name:', title || 'Untitled Template');
+    if (!name) return;
+    try {
+      await api.post(`/api/workspaces/${workspaceId}/templates`, {
+        name,
+        description: `Created from note: ${title}`,
+        category: 'custom',
+        contentMd: note.contentMd,
+      });
+      alert('Template saved!');
+    } catch {}
+  }, [note, title, workspaceId]);
+
   const handleExportIocs = useCallback(async (format: ExportFormatInfo) => {
     try {
       const res = await fetch(
@@ -538,20 +556,22 @@ export default function NoteEditorPage() {
               <Share2 className="h-4 w-4" />
             </Button>
 
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8"
-              onClick={handleExtractIocs}
-              disabled={extracting}
-              title="Extract IOCs"
-            >
-              {extracting ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Scan className="h-4 w-4" />
-              )}
-            </Button>
+            {note.type !== 'drawing' && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={handleExtractIocs}
+                disabled={extracting}
+                title="Extract IOCs"
+              >
+                {extracting ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Scan className="h-4 w-4" />
+                )}
+              </Button>
+            )}
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -564,19 +584,27 @@ export default function NoteEditorPage() {
                   <History className="h-4 w-4 mr-2" />
                   Version History
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleExportNote}>
-                  <Download className="h-4 w-4 mr-2" />
-                  Export as Markdown
-                </DropdownMenuItem>
-                {exportFormats.map((fmt) => (
-                  <DropdownMenuItem key={fmt.key} onClick={() => handleExportIocs(fmt)}>
-                    <Download className="h-4 w-4 mr-2" />
-                    Export IOCs as {fmt.label}
-                  </DropdownMenuItem>
-                ))}
+                {note.type !== 'drawing' && (
+                  <>
+                    <DropdownMenuItem onClick={handleExportNote}>
+                      <Download className="h-4 w-4 mr-2" />
+                      Export as Markdown
+                    </DropdownMenuItem>
+                    {exportFormats.map((fmt) => (
+                      <DropdownMenuItem key={fmt.key} onClick={() => handleExportIocs(fmt)}>
+                        <Download className="h-4 w-4 mr-2" />
+                        Export IOCs as {fmt.label}
+                      </DropdownMenuItem>
+                    ))}
+                  </>
+                )}
                 <DropdownMenuItem onClick={handleDuplicate}>
                   <Copy className="h-4 w-4 mr-2" />
                   Duplicate
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleSaveAsTemplate}>
+                  <LayoutTemplate className="h-4 w-4 mr-2" />
+                  Save as Template
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem className="text-destructive" onClick={handleDelete}>
@@ -592,18 +620,26 @@ export default function NoteEditorPage() {
         <div className="flex items-center gap-4 px-4 py-1.5 border-b border-border text-xs text-muted-foreground bg-card/30">
           <span>Created by {user?.displayName || 'Unknown'}</span>
           <span>Modified {formatRelativeDate(note.updatedAt)}</span>
-          <span>{note.wordCount} words</span>
+          <span>{note.type === 'drawing' ? 'Drawing' : `${note.wordCount} words`}</span>
         </div>
 
         {/* Editor */}
-        <div className="flex-1 overflow-hidden">
-          <NoteEditor
-            initialContent={note.contentMd}
-            workspaceId={workspaceId}
-            presenceUsers={[]}
-            editable={true}
-            onUpdate={handleContentUpdate}
-          />
+        <div className={`flex-1 ${note.type === 'drawing' ? 'overflow-visible relative' : 'overflow-hidden'}`}>
+          {note.type === 'drawing' ? (
+            <DrawingEditor
+              initialContent={note.contentMd}
+              onUpdate={handleContentUpdate}
+              editable={true}
+            />
+          ) : (
+            <NoteEditor
+              initialContent={note.contentMd}
+              workspaceId={workspaceId}
+              presenceUsers={[]}
+              editable={true}
+              onUpdate={handleContentUpdate}
+            />
+          )}
         </div>
       </div>
 

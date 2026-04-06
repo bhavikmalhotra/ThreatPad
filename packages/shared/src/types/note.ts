@@ -2,6 +2,7 @@ import type { Tag } from './tag';
 import type { UserProfile } from './user';
 
 export type NoteVisibility = 'private' | 'workspace' | 'custom';
+export type NoteType = 'text' | 'drawing';
 
 export interface Note {
   id: string;
@@ -9,6 +10,7 @@ export interface Note {
   folderId?: string | null;
   title: string;
   contentMd: string;
+  type: NoteType;
   visibility: NoteVisibility;
   templateId?: string | null;
   createdBy: string;
@@ -23,6 +25,7 @@ export interface Note {
 export interface NoteListItem {
   id: string;
   title: string;
+  type: NoteType;
   visibility: NoteVisibility;
   pinned: boolean;
   wordCount: number;

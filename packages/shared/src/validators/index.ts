@@ -37,6 +37,7 @@ export const createFolderSchema = z.object({
 
 export const createNoteSchema = z.object({
   title: z.string().max(500).default('Untitled'),
+  type: z.enum(['text', 'drawing']).default('text'),
   folderId: z.string().uuid().optional(),
   templateId: z.string().uuid().optional(),
   visibility: z.enum(['private', 'workspace', 'custom']).default('workspace'),

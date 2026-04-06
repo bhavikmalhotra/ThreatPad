@@ -11,6 +11,7 @@ ThreatPad combines the speed of modern productivity tools with CTI-specific capa
 ## Features
 
 - **Rich Editor** — WYSIWYG with syntax highlighting, tables, task lists, Edit/Preview toggle
+- **Drawing & Diagrams** — Full-page Excalidraw canvas for attack flowcharts, network diagrams, and workflows. Also embeddable as inline drawing blocks within text notes.
 - **IOC Auto-Extraction** — Detects IPs, domains, URLs, hashes, emails, CVEs from note content
 - **Plugin-Based Exports** — JSON, CSV, STIX 2.1 built-in. [Add your own](#writing-plugins) with a single file
 - **CTI Templates** — IOC Dump, Threat Actor Profile, Incident Notes, Campaign Tracker

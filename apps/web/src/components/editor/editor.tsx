@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Highlight from '@tiptap/extension-highlight';
@@ -15,7 +15,11 @@ import { TableRow } from '@tiptap/extension-table-row';
 import { TableCell } from '@tiptap/extension-table-cell';
 import { TableHeader } from '@tiptap/extension-table-header';
 import { common, createLowlight } from 'lowlight';
+import { DOMSerializer } from '@tiptap/pm/model';
+import { ExcalidrawBlock } from './excalidraw-block';
 import { Toolbar } from './toolbar';
+import '@excalidraw/excalidraw/index.css';
+
 import { PresenceBar, type PresenceUser } from './presence-bar';
 import { cn } from '@/lib/utils';
 import { api } from '@/lib/api-client';
@@ -31,6 +35,115 @@ async function uploadImage(file: File, workspaceId: string): Promise<string> {
   );
   const token = useAuthStore.getState().accessToken;
   return `${API_URL}${res.url}?token=${token}`;
+}
+
+/** Renders a static SVG of drawing data in preview mode */
+function PreviewDrawingBlock({ data }: { data: string }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!containerRef.current || !data) return;
+    let cancelled = false;
+    let parsed: any;
+    try { parsed = JSON.parse(data); } catch { return; }
+    if (!parsed.elements?.length) return;
+
+    import('@excalidraw/excalidraw').then((mod) => {
+      if (cancelled || !mod.exportToSvg) return;
+      mod.exportToSvg({
+        elements: parsed.elements,
+        appState: {
+          ...(parsed.appState || {}),
+          theme: 'dark',
+          exportBackground: true,
+          viewBackgroundColor: 'transparent',
+        },
+        files: parsed.files || null,
+      }).then((svg: SVGSVGElement) => {
+        if (cancelled || !containerRef.current) return;
+        svg.style.width = '100%';
+        svg.style.height = '100%';
+        containerRef.current.innerHTML = '';
+        containerRef.current.appendChild(svg);
+      }).catch(() => {});
+    });
+
+    return () => { cancelled = true; };
+  }, [data]);
+
+  return (
+    <div
+      ref={containerRef}
+      className="not-prose my-4 h-[350px] rounded-lg border border-border overflow-hidden flex items-center justify-center"
+    />
+  );
+}
+
+/** Builds the preview by rendering HTML segments and excalidraw blocks from editor JSON */
+function PreviewContent({ editor, initialContent }: { editor: any; initialContent: string }) {
+  if (!editor) {
+    return (
+      <div
+        className="preview-document prose prose-invert max-w-3xl w-full rounded-lg border border-border/50 bg-card/60 px-12 py-10 shadow-lg"
+        dangerouslySetInnerHTML={{ __html: initialContent }}
+      />
+    );
+  }
+
+  // Walk the editor JSON to split content into HTML segments and excalidraw blocks
+  const json = editor.getJSON();
+  const segments: { type: 'html' | 'excalidraw'; content: string }[] = [];
+  let htmlNodes: any[] = [];
+
+  const flushHtml = () => {
+    if (htmlNodes.length === 0) return;
+    // Generate HTML for accumulated non-excalidraw nodes using a temporary doc
+    const tempDoc = { type: 'doc', content: htmlNodes };
+    try {
+      const html = editor.schema.nodeFromJSON(tempDoc);
+      const div = document.createElement('div');
+      const fragment = DOMSerializer.fromSchema(editor.schema).serializeFragment(html.content);
+      div.appendChild(fragment);
+      segments.push({ type: 'html', content: div.innerHTML });
+    } catch {
+      // Fallback: use getHTML for the whole doc
+    }
+    htmlNodes = [];
+  };
+
+  if (json.content) {
+    for (const node of json.content) {
+      if (node.type === 'excalidrawBlock') {
+        flushHtml();
+        segments.push({ type: 'excalidraw', content: node.attrs?.data || '' });
+      } else {
+        htmlNodes.push(node);
+      }
+    }
+    flushHtml();
+  }
+
+  // Fallback: if segment extraction failed, show plain HTML
+  if (segments.length === 0) {
+    return (
+      <div
+        className="preview-document prose prose-invert max-w-3xl w-full rounded-lg border border-border/50 bg-card/60 px-12 py-10 shadow-lg"
+        dangerouslySetInnerHTML={{ __html: editor.getHTML() }}
+      />
+    );
+  }
+
+  return (
+    <div className="preview-document prose prose-invert max-w-3xl w-full rounded-lg border border-border/50 bg-card/60 px-12 py-10 shadow-lg">
+      {segments.map((seg, i) =>
+        seg.type === 'excalidraw' ? (
+          <PreviewDrawingBlock key={i} data={seg.content} />
+        ) : (
+          <div key={i} dangerouslySetInnerHTML={{ __html: seg.content }} />
+        ),
+      )}
+    </div>
+  );
 }
 
 interface NoteEditorProps {
@@ -73,6 +186,7 @@ export function NoteEditor({
       TableRow,
       TableCell,
       TableHeader,
+      ExcalidrawBlock,
     ],
     content: initialContent,
     editable,
@@ -188,10 +302,7 @@ export function NoteEditor({
       )}>
         {previewMode ? (
           <div className="flex justify-center py-10 px-4">
-            <div
-              className="preview-document prose prose-invert max-w-3xl w-full rounded-lg border border-border/50 bg-card/60 px-12 py-10 shadow-lg"
-              dangerouslySetInnerHTML={{ __html: editor?.getHTML() || initialContent }}
-            />
+            <PreviewContent editor={editor} initialContent={initialContent} />
           </div>
         ) : (
           <EditorContent editor={editor} />

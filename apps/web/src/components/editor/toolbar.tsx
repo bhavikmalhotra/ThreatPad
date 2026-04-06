@@ -22,6 +22,7 @@ import {
   Redo,
   CodeSquare,
   ImagePlus,
+  PenTool,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -254,6 +255,11 @@ export function Toolbar({ editor, workspaceId }: ToolbarProps) {
         icon={ImagePlus}
         label="Insert Image"
         disabled={!workspaceId}
+      />
+      <ToolbarButton
+        onClick={() => editor.chain().focus().insertContent({ type: 'excalidrawBlock', attrs: { data: '' } }).run()}
+        icon={PenTool}
+        label="Insert Drawing"
       />
       <input
         ref={fileInputRef}

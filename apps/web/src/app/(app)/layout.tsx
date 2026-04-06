@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Sidebar } from '@/components/layout/sidebar';
 import { Header } from '@/components/layout/header';
 import { CommandPalette } from '@/components/layout/command-palette';
+import { TemplatePicker } from '@/components/layout/template-picker';
 import { useUIStore } from '@/stores/ui-store';
 import { useAuthStore } from '@/stores/auth-store';
 import { api } from '@/lib/api-client';
@@ -20,6 +21,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [folders, setFolders] = useState<FolderTreeNode[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
   const [loading, setLoading] = useState(true);
+  const [templatePickerOpen, setTemplatePickerOpen] = useState(false);
 
   // Auth guard
   useEffect(() => {
@@ -171,6 +173,40 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     }
   }, [activeWorkspaceId, router]);
 
+  const handleCreateDrawing = useCallback(async (folderId?: string) => {
+    if (!activeWorkspaceId) return;
+    try {
+      const res = await api.post<{ data: { id: string } }>(`/api/workspaces/${activeWorkspaceId}/notes`, {
+        title: 'Untitled Drawing',
+        type: 'drawing',
+        visibility: 'workspace',
+        folderId: folderId || undefined,
+      });
+      if (folderId) {
+        api.get<{ data: FolderTreeNode[] }>(`/api/workspaces/${activeWorkspaceId}/folders`)
+          .then((r) => setFolders(r.data))
+          .catch(() => {});
+      }
+      router.push(`/workspace/${activeWorkspaceId}/note/${res.data.id}`);
+    } catch {
+      // Handle error
+    }
+  }, [activeWorkspaceId, router]);
+
+  const handleCreateFromTemplate = useCallback(async (templateId: string, templateName: string) => {
+    if (!activeWorkspaceId) return;
+    try {
+      const res = await api.post<{ data: { id: string } }>(`/api/workspaces/${activeWorkspaceId}/notes`, {
+        title: templateName,
+        templateId,
+        visibility: 'workspace',
+      });
+      setTemplatePickerOpen(false);
+      refreshFolders();
+      router.push(`/workspace/${activeWorkspaceId}/note/${res.data.id}`);
+    } catch {}
+  }, [activeWorkspaceId, router, refreshFolders]);
+
   // Don't render if not authenticated
   if (!accessToken) {
     return null;
@@ -209,6 +245,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           }
           onCreateFolder={handleCreateFolder}
           onCreateNote={handleCreateNote}
+          onCreateDrawing={handleCreateDrawing}
           onRenameFolder={() => {}}
           onDeleteFolder={() => {}}
           onTagToggle={handleTagToggle}
@@ -218,7 +255,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               router.push(`/workspace/${activeWorkspace.id}/search?q=${encodeURIComponent(query)}`);
             }
           }}
-          onOpenTemplates={() => {}}
+          onOpenTemplates={() => setTemplatePickerOpen(true)}
           onOpenSettings={() => {
             if (activeWorkspace) router.push(`/workspace/${activeWorkspace.id}/settings`);
           }}
@@ -228,6 +265,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       </div>
       <CommandPalette
         onCreateNote={handleCreateNote}
+        onCreateDrawing={handleCreateDrawing}
         onCreateFolder={handleCreateFolder}
         onNavigateSettings={() => router.push('/settings/profile')}
         onToggleTheme={toggleTheme}
@@ -238,6 +276,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           }
         }}
       />
+      {activeWorkspaceId && (
+        <TemplatePicker
+          open={templatePickerOpen}
+          onClose={() => setTemplatePickerOpen(false)}
+          onSelect={handleCreateFromTemplate}
+          workspaceId={activeWorkspaceId}
+        />
+      )}
     </div>
   );
 }

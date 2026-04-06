@@ -12,6 +12,7 @@ import {
   ChevronDown,
   Settings,
   X,
+  PenTool,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -43,6 +44,7 @@ interface SidebarProps {
   onNoteSelect: (noteId: string) => void;
   onCreateFolder: (parentId?: string) => void;
   onCreateNote: (folderId?: string) => void;
+  onCreateDrawing: (folderId?: string) => void;
   onRenameFolder: (folderId: string) => void;
   onDeleteFolder: (folderId: string) => void;
   onTagToggle: (tagId: string) => void;
@@ -67,6 +69,7 @@ export function Sidebar({
   onNoteSelect,
   onCreateFolder,
   onCreateNote,
+  onCreateDrawing,
   onRenameFolder,
   onDeleteFolder,
   onTagToggle,
@@ -130,6 +133,10 @@ export function Sidebar({
               <FileText className="h-4 w-4 mr-2" />
               New Note
             </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onCreateDrawing()}>
+              <PenTool className="h-4 w-4 mr-2" />
+              New Drawing
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={() => onCreateFolder()}>
               <FolderPlus className="h-4 w-4 mr-2" />
               New Folder
@@ -158,6 +165,7 @@ export function Sidebar({
             onNoteSelect={onNoteSelect}
             onCreateFolder={onCreateFolder}
             onCreateNote={onCreateNote}
+            onCreateDrawing={onCreateDrawing}
             onRenameFolder={onRenameFolder}
             onDeleteFolder={onDeleteFolder}
           />

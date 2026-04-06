@@ -57,6 +57,7 @@ export async function noteRoutes(app: FastifyInstance) {
         return {
           id: note.id,
           title: note.title,
+          type: note.type,
           visibility: note.visibility,
           pinned: note.pinned,
           wordCount: note.wordCount,
@@ -95,6 +96,7 @@ export async function noteRoutes(app: FastifyInstance) {
       folderId: body.folderId,
       title: body.title || 'Untitled',
       contentMd,
+      type: body.type,
       visibility: body.visibility,
       templateId: body.templateId,
       createdBy: request.userId!,
@@ -177,7 +179,14 @@ export async function noteRoutes(app: FastifyInstance) {
     const { noteId } = request.params as { noteId: string };
     const { contentMd } = request.body as { contentMd: string };
 
-    const wordCount = contentMd.split(/\s+/).filter((w: string) => w.length > 0).length;
+    // Fetch note to check type — drawings don't have meaningful word counts
+    const existingNote = await db.query.notes.findFirst({
+      where: eq(schema.notes.id, noteId),
+      columns: { type: true },
+    });
+    const wordCount = existingNote?.type === 'drawing'
+      ? 0
+      : contentMd.split(/\s+/).filter((w: string) => w.length > 0).length;
 
     const [updated] = await db.update(schema.notes)
       .set({ contentMd, wordCount, updatedAt: new Date() })
@@ -262,6 +271,7 @@ export async function noteRoutes(app: FastifyInstance) {
       folderId: original.folderId,
       title: `${original.title} (Copy)`,
       contentMd: original.contentMd,
+      type: original.type,
       visibility: original.visibility,
       createdBy: request.userId!,
       wordCount: original.wordCount,

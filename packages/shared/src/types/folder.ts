@@ -14,6 +14,7 @@ export interface Folder {
 export interface FolderNoteItem {
   id: string;
   title: string;
+  type: 'text' | 'drawing';
   folderId: string | null;
   updatedAt: string;
 }

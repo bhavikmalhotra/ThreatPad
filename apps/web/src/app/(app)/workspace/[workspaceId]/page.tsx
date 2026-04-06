@@ -11,6 +11,7 @@ import {
   SortAsc,
   Filter,
   Loader2,
+  PenTool,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,6 +28,7 @@ import { api } from '@/lib/api-client';
 interface NoteListItem {
   id: string;
   title: string;
+  type?: 'text' | 'drawing';
   snippet: string;
   tags: { id: string; name: string; color: string }[];
   updatedAt: string;
@@ -179,11 +181,15 @@ export default function WorkspacePage() {
               }
               className="flex items-center gap-3 rounded-lg border border-border bg-card p-3 hover:bg-accent transition-colors text-left w-full"
             >
-              <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+              {note.type === 'drawing' ? (
+                <PenTool className="h-4 w-4 text-muted-foreground shrink-0" />
+              ) : (
+                <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+              )}
               <div className="min-w-0 flex-1">
                 <div className="text-sm font-medium truncate">{note.title}</div>
                 <div className="text-xs text-muted-foreground truncate mt-0.5">
-                  {note.snippet}
+                  {note.type === 'drawing' ? 'Drawing' : note.snippet}
                 </div>
                 <div className="flex items-center gap-2 mt-1.5">
                   {note.tags.map((tag) => (

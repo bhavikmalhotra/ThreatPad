@@ -29,6 +29,7 @@ import { mkdir } from 'node:fs/promises';
 
 export async function buildApp() {
   const app = Fastify({
+    bodyLimit: 10 * 1024 * 1024, // 10MB — drawings with embedded images can be large
     logger: {
       level: env.NODE_ENV === 'production' ? 'info' : 'debug',
       transport: env.NODE_ENV !== 'production'

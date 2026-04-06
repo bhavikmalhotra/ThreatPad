@@ -41,7 +41,7 @@ export async function folderRoutes(app: FastifyInstance) {
         eq(schema.notes.workspaceId, workspaceId),
         isNull(schema.notes.deletedAt),
       ),
-      columns: { id: true, title: true, folderId: true, updatedAt: true },
+      columns: { id: true, title: true, type: true, folderId: true, updatedAt: true },
     });
 
     // Group notes by folderId

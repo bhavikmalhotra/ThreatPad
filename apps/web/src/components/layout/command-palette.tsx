@@ -10,11 +10,13 @@ import {
   Moon,
   Sun,
   LogOut,
+  PenTool,
 } from 'lucide-react';
 import { useUIStore } from '@/stores/ui-store';
 
 interface CommandPaletteProps {
   onCreateNote: () => void;
+  onCreateDrawing: () => void;
   onCreateFolder: () => void;
   onNavigateSettings: () => void;
   onToggleTheme: () => void;
@@ -24,6 +26,7 @@ interface CommandPaletteProps {
 
 export function CommandPalette({
   onCreateNote,
+  onCreateDrawing,
   onCreateFolder,
   onNavigateSettings,
   onToggleTheme,
@@ -75,6 +78,16 @@ export function CommandPalette({
               >
                 <FileText className="h-4 w-4" />
                 New Note
+              </Command.Item>
+              <Command.Item
+                className="flex items-center gap-2 rounded-md px-2 py-2 text-sm cursor-pointer hover:bg-accent aria-selected:bg-accent"
+                onSelect={() => {
+                  onCreateDrawing();
+                  setCommandPaletteOpen(false);
+                }}
+              >
+                <PenTool className="h-4 w-4" />
+                New Drawing
               </Command.Item>
               <Command.Item
                 className="flex items-center gap-2 rounded-md px-2 py-2 text-sm cursor-pointer hover:bg-accent aria-selected:bg-accent"

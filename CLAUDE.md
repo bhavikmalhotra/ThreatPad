@@ -67,12 +67,20 @@ There are no tests yet.
 
 **Editor:** Tiptap 3 (ProseMirror-based) in `src/components/editor/`. Key config:
 - `immediatelyRender: false` is required to avoid SSR hydration errors
-- Extensions: StarterKit, CodeBlockLowlight (syntax highlighting via lowlight), Tables, TaskList, Highlight, Link, Image, Placeholder
+- Extensions: StarterKit, CodeBlockLowlight (syntax highlighting via lowlight), Tables, TaskList, Highlight, Link, Image, Placeholder, ExcalidrawBlock
 - Edit/Preview toggle — Edit mode shows WYSIWYG editor with toolbar; Preview mode renders content as clean read-only HTML with Tailwind Typography (`prose prose-invert`)
 - Content is stored as HTML in the `contentMd` field (not raw markdown)
 - Debounced auto-save (1 second) on both content and title changes
 - Image upload: paste, drag-drop, or toolbar button → uploads to server via `POST /api/workspaces/:id/uploads`, stores on disk, references by authenticated URL
 - Collaboration-ready (Yjs + y-websocket installed but not yet connected)
+
+**Drawing support:** Two modes of drawing via `@excalidraw/excalidraw`:
+- **Full-page drawings** — Notes with `type: 'drawing'` open a full-screen Excalidraw canvas instead of the text editor. Created via "New Drawing" in sidebar, folder context menu, or command palette. Drawing data stored as JSON in `contentMd`.
+- **Embedded drawing blocks** — Text notes can contain inline drawing blocks via the `ExcalidrawBlock` Tiptap extension. Insert via toolbar "Insert Drawing" button. Shows a preview card in the editor; click "Edit" opens a full-screen Excalidraw modal. Drawing data stored as a JSON attribute on the node, serialized as `<div data-type="excalidraw" data-content="...">`.
+- Excalidraw MUST be dynamically imported with `next/dynamic` + `ssr: false` (uses browser APIs)
+- Dark theme (`theme="dark"`) to match ThreatPad
+- Drawing editor debounces saves at 2 seconds (vs 1 second for text)
+- `pnpm.overrides` in root `package.json` pins `@tiptap/core@3.20.4` to prevent version conflicts
 
 **UI components:** Radix UI primitives wrapped with Tailwind in `src/components/ui/` (shadcn/ui pattern). Use `cn()` from `src/lib/utils.ts` for class merging.
 
@@ -99,7 +107,7 @@ There are no tests yet.
 - Folder tree showing subfolders and notes inside each folder
 - Tag list with filter toggle and delete (X button on hover)
 - "Workspace Settings" link at bottom
-- "New" dropdown: New Note, New Folder, From Template
+- "New" dropdown: New Note, New Drawing, New Folder, From Template
 
 ### Shared Package (`packages/shared`)
 
@@ -110,7 +118,7 @@ Key exports:
 - **System templates** (`constants/templates.ts`) — Markdown templates for IOC Dump, Threat Actor Profile, Incident Notes, Campaign Tracker
 - **Zod schemas** (`validators/`) — validation for login, register, workspace/folder/note/tag CRUD, search
 - **IOC extractor** (`utils/ioc-extractor.ts`) — `extractIocs(text)` returns typed IOCs with context snippets and in-memory deduplication via `seen` set; `refang()`/`defang()` for indicator formatting
-- **FolderTreeNode type** (`types/folder.ts`) — includes `children` (subfolders), `noteCount`, and `notes` (FolderNoteItem array with id, title, folderId, updatedAt)
+- **FolderTreeNode type** (`types/folder.ts`) — includes `children` (subfolders), `noteCount`, and `notes` (FolderNoteItem array with id, title, type, folderId, updatedAt)
 
 ### Backend (`apps/server`)
 
@@ -128,7 +136,7 @@ Key exports:
 - `auth.ts` — register, login (bcrypt), refresh token rotation, logout, GET/PATCH /me, change-password, Google OAuth, GitHub OAuth, forgot/reset password, email verification, resend verification
 - `workspaces.ts` — CRUD + member invite/role/remove
 - `folders.ts` — CRUD with tree building (includes notes per folder), depth validation (max 5), note count via `count(*)`, soft delete
-- `notes.ts` — CRUD, visibility filtering (private notes only visible to creator), template content, tag enrichment, content update with auto-versioning (snapshots every 5 min), duplicate, note-level sharing (permissions CRUD)
+- `notes.ts` — CRUD, visibility filtering (private notes only visible to creator), template content, tag enrichment, content update with auto-versioning (snapshots every 5 min), duplicate, note-level sharing (permissions CRUD). Notes have a `type` field (`text` or `drawing`); word count is skipped for drawings.
 - `tags.ts` — CRUD (editor role) + add/remove tags from notes (via `noteTags` junction)
 - `templates.ts` — list (system + workspace), create, get, delete (protects system)
 - `search.ts` — full-text search via Postgres `to_tsvector`/`to_tsquery`
@@ -163,6 +171,8 @@ Key exports:
 **ORM:** Drizzle ORM with `postgres.js` driver. Schema in `src/schema/` (14 tables).
 
 Key tables: `users`, `workspaces`, `workspace_members`, `folders`, `notes`, `note_versions`, `note_permissions`, `note_templates`, `tags`, `note_tags`, `note_iocs`, `uploads`, `audit_logs`, `refresh_tokens`, `verification_tokens`, `workspace_invitations`.
+
+The `notes` table has a `type` column (`note_type` enum: `text` | `drawing`, default `text`). Drawing notes store Excalidraw JSON in `contentMd`.
 
 Drizzle relations are defined in `src/schema/relations.ts` — enables `with: {}` eager loading in queries.
 
@@ -201,8 +211,9 @@ Frontend and backend are fully built and wired together. All pages fetch real da
 - Note pinning
 - Note duplication and soft-delete
 - Edit/Preview toggle in editor (WYSIWYG ↔ rendered preview)
+- **Drawing support** — Full-page Excalidraw drawings (separate note type) and embedded drawing blocks in text notes (via Tiptap extension). Shapes, arrows, freehand, text, colors, thickness, dark theme.
 - Tag CRUD (create inline in note editor, delete from sidebar)
-- Folder tree with subfolders and notes displayed inside folders
+- Folder tree with subfolders and notes displayed inside folders (PenTool icon for drawings, FileText icon for text notes)
 - IOC extraction (on-demand, deduplicates, clears stale data)
 - IOC export: plugin-based — JSON, CSV, STIX 2.1 built-in (community can add more via export plugin system)
 - Version history with auto-snapshots (every 5 min) and manual restore
